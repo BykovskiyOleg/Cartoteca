@@ -1,0 +1,147 @@
+#include <iostream>
+#include <vector>
+#include <string>
+
+// Абстрактный базовый класс для записи картотеки
+class ILibraryRecord {
+public:
+    virtual ~ILibraryRecord() = default;
+    virtual std::string getAuthor() const = 0;
+    virtual std::string getTitle() const = 0;
+    virtual std::string getType() const = 0;
+    virtual void display() const = 0;
+};
+
+// Конкретная реализация записи картотеки
+class LibraryRecord : public ILibraryRecord {
+private:
+    std::string author_;
+    std::string title_;
+    std::string type_;
+
+public:
+    LibraryRecord(std::string author, std::string title, std::string type)
+        : author_(author), title_(title), type_(type) {
+        if (author_.empty() || title_.empty() || type_.empty()) {
+            std::cerr << "Поля не могут быть пустыми\n";
+            exit(1);
+        }
+    }
+
+    ~LibraryRecord() override = default;
+
+    std::string getAuthor() const override { return author_; }
+    std::string getTitle() const override { return title_; }
+    std::string getType() const override { return type_; }
+
+    void display() const override {
+        std::cout << "Автор: " << author_ << ", Название: " << title_
+            << ", Тип: " << type_ << '\n';
+    }
+};
+
+// Класс для управления картотекой
+class ILibraryCatalog {
+public:
+    virtual ~ILibraryCatalog() = default;
+    virtual void addRecord(ILibraryRecord* record) = 0;
+    virtual void displayAll() const = 0;
+    virtual void displayRecord(size_t index) const = 0;
+    virtual void sortByAuthor() = 0;
+    virtual void sortByTitle() = 0;
+};
+
+// Реализация картотеки
+class LibraryCatalog : public ILibraryCatalog {
+private:
+    std::vector<ILibraryRecord*> records_; // Агрегация с сырыми указателями
+
+public:
+    ~LibraryCatalog() override {
+        for (auto* record : records_) {
+            delete record;
+        }
+    }
+
+    void addRecord(ILibraryRecord* record) override {
+        records_.push_back(record);
+    }
+
+    void displayAll() const override {
+        if (records_.empty()) {
+            std::cout << "Картотека пуста\n";
+            return;
+        }
+        for (const auto* record : records_) {
+            record->display();
+        }
+    }
+
+    void displayRecord(size_t index) const override {
+        if (index >= records_.size()) {
+            std::cerr << "Неверный индекс записи\n";
+            exit(1);
+        }
+        records_[index]->display();
+    }
+
+    void sortByAuthor() override {
+        for (size_t i = 0; i < records_.size(); ++i) {
+            for (size_t j = 0; j < records_.size() - 1 - i; ++j) {
+                if (records_[j]->getAuthor() > records_[j + 1]->getAuthor()) {
+                    std::swap(records_[j], records_[j + 1]);
+                }
+            }
+        }
+    }
+
+    void sortByTitle() override {
+        for (size_t i = 0; i < records_.size(); ++i) {
+            for (size_t j = 0; j < records_.size() - 1 - i; ++j) {
+                if (records_[j]->getTitle() > records_[j + 1]->getTitle()) {
+                    std::swap(records_[j], records_[j + 1]);
+                }
+            }
+        }
+    }
+};
+
+// Создание записей
+class RecordFactory {
+public:
+    static ILibraryRecord* createRecord(
+        const std::string& author, const std::string& title, const std::string& type) {
+        return new LibraryRecord(author, title, type);
+    }
+};
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+
+    LibraryCatalog catalog;
+
+    // Добавление записей
+    catalog.addRecord(RecordFactory::createRecord("Л.Н. Толстой", "Война и мир", "Книга"));
+    catalog.addRecord(RecordFactory::createRecord("А.П. Чехов", "Вишневый сад", "Пьеса"));
+    catalog.addRecord(RecordFactory::createRecord("Ф.М. Достоевский", "Преступление и наказание", "Книга"));
+
+    // Вывод всех записей
+    std::cout << "Все записи:\n";
+    catalog.displayAll();
+
+    // Вывод одной записи
+    std::cout << "\nОдна запись (индекс 1):\n";
+    catalog.displayRecord(1);
+
+    // Сортировка по автору
+    std::cout << "\nСортировка по автору:\n";
+    catalog.sortByAuthor();
+    catalog.displayAll();
+
+    // Сортировка по названию
+    std::cout << "\nСортировка по названию:\n";
+    catalog.sortByTitle();
+    catalog.displayAll();
+
+    return 0;
+}
